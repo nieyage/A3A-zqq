@@ -177,4 +177,69 @@ ARID3A.fa > meme-chip.out &
 #    --da 1 \
 #    -o BETA_A3A_rmbg_pvalue > BETA_plus.out &
 
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 1000 -a 1000    \
+-R /public/home/nieyg/reference/ref_gene/hg19_RefSeq.bed  \
+-S A3A2_CPM_normalized.bw IgG2_CPM_normalized.bw \
+--skipZeros  -o A3A-IgG-CPM.gz  \
+--outFileSortedRegions A3A-bedtools-out.bed
+plotHeatmap -m A3A-IgG-CPM.gz  -out A3A-IgG-CPM-heatmap.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m A3A-IgG-CPM.gz  -out A3A-IgG-CPM-profile.pdf --plotFileFormat pdf --perGroup --dpi 720 
 
+nohup macs2 callpeak -t A3A2_sorted_rmDup_mapped_rmbl.bam \
+               -c IgG2_sorted_rmDup_mapped_rmbl.bam  \
+               -f BAMPE \
+               -g hs \
+               -n A3A-IG &
+awk '{print $4"\t"$1"\t"$2"\t"$3"\t+"}' A3A-IG_peaks.narrowPeak > A3A-IgG_homer.tmp
+nohup findMotifsGenome.pl A3A-IgG_homer.tmp  hg19 A3A-IgG_motifDir_Homer -len 6,8,10,12  &
+
+library(ChIPpeakAnno)
+library(ChIPseeker)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(org.Hs.eg.db)
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+promoter <- getPromoters(TxDb=txdb, 
+                         upstream=1000, downstream=1000)
+
+peakAnno <- annotatePeak("A3A-IgG_summits.bed", 
+                         tssRegion=c(-1000, 1000),
+                         TxDb=txdb, annoDb="org.Hs.eg.db")
+pdf("A3A-IgG_summits.pdf")
+p1<-plotAnnoPie(peakAnno)
+plotAnnoBar(peakAnno)
+vennpie(peakAnno)
+upsetplot(peakAnno)
+#upsetplot(peakAnno, vennpie=TRUE)
+plotDistToTSS(peakAnno,
+              title="Distribution of A3A-binding loci\nrelative to TSS")
+dev.off()
+write.csv(as.data.frame(peakAnno),"A3A-cuttag-peak.annotation.csv",row.names = F)
+
+
+
+
+
+
+
+bedtools getfasta -fi /public/home/nieyg/reference/genome/hg19/hg19.fa \
+-bed A3A-IG_peaks.narrowPeak -fo ARID3A.fa
+conda activate meme
+# meme denovo motif 
+nohup meme  ARID3A.fa -oc ARID3A_meme_denovo -dna -p 12 -maxw 10 -minw 6 -mod zoops -nmotifs 50 -revcomp &
+
+
+
+nohup macs2 callpeak -t IgG2_sorted_rmDup_mapped_rmbl.bam \
+               -c A3A2_sorted_rmDup_mapped_rmbl.bam  \
+               -f BAMPE \
+               -g hs \
+               -n IG-A3A &
+awk '{print $4"\t"$1"\t"$2"\t"$3"\t+"}' IG-A3A_peaks.narrowPeak >IG-A3A_homer.tmp
+nohup findMotifsGenome.pl IG-A3A_homer.tmp  hg19 IG-A3AmotifDir_Homer -len 6,8,10,12  &
+
+bedtools getfasta -fi /public/home/nieyg/reference/genome/hg19/hg19.fa \
+-bed IG-A3A_peaks.narrowPeak -fo IgG.fa
+conda activate meme
+# meme denovo motif 
+nohup meme  IgG.fa -oc IgG_meme_denovo -dna -p 12 -maxw 10 -minw 6 -mod zoops -nmotifs 50 -revcomp &
