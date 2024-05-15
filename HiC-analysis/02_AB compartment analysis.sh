@@ -1,7 +1,6 @@
 # AB compartment analysis
 # Regions in a Hi-C matrix can generally be assigned to either the active or the inactive compartment, also called ‘A’ and ‘B’ compartments, respectively.
 
-
 usage: fanc compartments [-h] [-d DOMAINS] [-v EIGENVECTOR]
                          [-e ENRICHMENT_FILE] [-m MATRIX_FILE] [-g GENOME]
                          [-w] [-r REGION] [-i EIGENVECTOR_INDEX]
